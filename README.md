@@ -53,11 +53,11 @@ flowchart LR
 - Keil µVision 5
 - Keil C51 工具链
 - 当前工程目标器件：IS89C51
-- 工程文件：`药品监测系统.uvproj`
+- 工程文件：`药品检测系统.uvproj`
 
-工程时钟已统一为 11.0592 MHz，并已启用 HEX 文件生成。修复后的全部 C 源文件已使用 C51 9.57 和 BL51 6.22 完成命令行编译、链接及 HEX 转换，结果为 `0 Error(s), 0 Warning(s)`，程序占用约 2696 字节代码空间；最新固件位于 `Objects/main.hex`。
+工程时钟已统一为 11.0592 MHz，并已启用 HEX 文件生成。修复后的全部 C 源文件已使用 C51 9.57 和 BL51 6.22 完成命令行编译、链接及 HEX 转换，结果为 `0 Error(s), 0 Warning(s)`，程序占用约 2696 字节代码空间；本地构建会生成 `Objects/main.hex`，该产物默认不提交到 Git。
 
-当前验证环境中的 C51/BL51 是评估版。现有程序可以成功生成固件，但继续增加固件功能时可能需要正式许可证或进一步压缩代码。
+当前验证环境中的 C51/BL51 是评估版，链接器显示 2 KB 用户代码额度已使用约 99%。现有程序可以成功生成固件，但继续增加固件功能时可能需要正式许可证或进一步压缩代码。
 
 ### 服务端
 
@@ -79,6 +79,7 @@ python -m pip install -r requirements.txt
 
 ```text
 .
+├── .gitignore                # GitHub 提交排除规则
 ├── main.c                    # 单片机主程序、定时轮询与报文组装
 ├── delay.c / delay.h         # 毫秒延时
 ├── DHT11.c / DHT11.h         # 温湿度采集
@@ -86,7 +87,7 @@ python -m pip install -r requirements.txt
 ├── usart.c / usart.h         # 8051 串口驱动
 ├── esp8266.c / esp8266.h     # ESP8266 AT 指令与 TCP 发送
 ├── STARTUP.A51               # 8051 启动文件
-├── 药品管理系统.uvproj       # Keil 工程
+├── 药品检测系统.uvproj       # Keil 工程
 ├── Listings/                 # Keil 编译清单
 ├── Objects/                  # Keil 编译产物与构建日志
 └── TCP/
@@ -101,7 +102,7 @@ python -m pip install -r requirements.txt
     └── stop.sh               # 按 PID 安全停止服务
 ```
 
-`Listings/`、`Objects/`、日志、SQLite 的 `-wal`/`-shm` 文件以及虚拟环境均属于运行或构建产物，后续使用 Git 管理时建议加入 `.gitignore`。
+`.gitignore` 已排除 `Listings/`、`Objects/`、虚拟环境、日志、PID、SQLite 数据库及其临时文件、Keil 用户配置和 Office 临时文件。这些内容不会在首次提交时进入 GitHub；Keil 工程文件 `药品检测系统.uvproj` 和全部源码会正常保留。
 
 ## 部署与运行
 
@@ -197,7 +198,7 @@ python -m uvicorn web:app --host 0.0.0.0 --port 8080
 #define SERVER_PORT     "2025"
 ```
 
-然后使用 Keil 打开 `药品管理系统.uvproj`：
+然后使用 Keil 打开 `药品检测系统.uvproj`：
 
 1. 确认目标器件、晶振和实际硬件一致。
 2. 确认 **Create HEX File** 保持勾选；工程文件已默认启用。
@@ -259,3 +260,9 @@ curl http://127.0.0.1:8079/meds
 - DHT11 读取增加了阶段超时和校验，返回整数温湿度字节，失败时不会上报无效数据。
 
 以上修改已通过 UTF-8、XML、Python 3.12 语法编译、前端 JavaScript、C51 编译、BL51 链接及 HEX 转换检查。当前 Windows 环境没有 Bash 和服务端第三方依赖，因此启动脚本及三个服务仍需在部署机创建虚拟环境后进行一次端到端运行验证；传感器时序和 ESP8266 通信也需要连接实际硬件确认。
+
+## GitHub 开源说明
+
+- `.gitignore` 默认不提交本机数据库、运行日志、虚拟环境、Keil 构建产物和用户配置。
+- `main.c` 中只应保留 Wi-Fi 占位符；提交前不要写入真实 SSID、密码、服务器密钥或其他凭据。
+- 当前仓库尚未包含 `LICENSE`。正式公开前应根据学校要求和第三方代码授权选择合适的开源许可证。
