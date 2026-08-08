@@ -53,7 +53,7 @@ flowchart LR
 - Keil µVision 5
 - Keil C51 工具链
 - 当前工程目标器件：IS89C51
-- 工程文件：`药品管理系统.uvproj`
+- 工程文件：`药品监测系统.uvproj`
 
 工程时钟已统一为 11.0592 MHz，并已启用 HEX 文件生成。修复后的全部 C 源文件已使用 C51 9.57 和 BL51 6.22 完成命令行编译、链接及 HEX 转换，结果为 `0 Error(s), 0 Warning(s)`，程序占用约 2696 字节代码空间；最新固件位于 `Objects/main.hex`。
 
