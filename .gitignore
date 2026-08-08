@@ -1,0 +1,74 @@
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Runtime state and local data
+*.log
+*.pid
+.run/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config.local.h
+secrets.h
+
+# Keil C51 build products
+Listings/
+Objects/
+*.obj
+*.lst
+*.m51
+*.lnp
+*.hex
+*.bin
+*.axf
+*.elf
+*.map
+*.crf
+*.lib
+*.build_log.htm
+
+# Keil per-user settings
+*.uvgui
+*.uvgui.*
+*.uvguix
+*.uvguix.*
+*.uvopt
+*.uvoptx
+JLinkLog.txt
+
+# Editor and local agent settings
+.vscode/
+.idea/
+.codex/
+.agents/
+*.suo
+*.user
+*.swp
+*.swo
+
+# Operating-system and office temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+~$*
+*.tmp
+*.temp
+*~
