@@ -1,0 +1,54 @@
+C51 COMPILER V9.57.0.0   USART                                                             08/08/2026 15:33:52 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE USART
+OBJECT MODULE PLACED IN .\Objects\usart.obj
+COMPILER INVOKED BY: E:\tools\keil\core\C51\BIN\C51.exe usart.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\List
+                    -ings\usart.lst) TABS(2) OBJECT(.\Objects\usart.obj)
+
+line level    source
+
+   1          #include <REG52.H>
+   2          #include "usart.h"
+   3          
+   4          
+   5          void UART_Init(void)
+   6          {
+   7   1          TMOD = (TMOD & 0x0F) | 0x20;
+   8   1          TH1 = 0xFD; /* 9600 baud @ 11.0592 MHz */
+   9   1          TL1 = 0xFD;
+  10   1          TR1 = 1;
+  11   1          SCON = 0x50;
+  12   1          RI = 0;
+  13   1          TI = 0;
+  14   1          ES = 0; /* ESP 响应由轮询读取，不使用串口中断 */
+  15   1      }
+  16          
+  17          
+  18          void UART_SendByte(unsigned char dat)
+  19          {
+  20   1          SBUF = dat;
+  21   1          while(!TI);
+  22   1          TI = 0;
+  23   1      }
+  24          
+  25          
+  26          void UART_SendString(char *str)
+  27          {
+  28   1          while(*str)
+  29   1              UART_SendByte(*str++);
+  30   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     71    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

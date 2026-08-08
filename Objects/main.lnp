@@ -1,0 +1,8 @@
+".\Objects\main.obj",
+".\Objects\hx711.obj",
+".\Objects\DHT11.obj",
+".\Objects\esp8266.obj",
+".\Objects\usart.obj",
+".\Objects\delay.obj" 
+TO ".\Objects\main" 
+PRINT(".\Listings\main.m51")

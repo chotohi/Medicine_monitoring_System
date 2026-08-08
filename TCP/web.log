@@ -1,0 +1,11 @@
+INFO:     Started server process [90431]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8079 (Press CTRL+C to quit)
+INFO:     223.104.124.28:37585 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41136 - "GET /meds HTTP/1.1" 404 Not Found
+INFO:     223.104.124.28:37585 - "GET /api/meds HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [90431]

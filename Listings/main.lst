@@ -1,0 +1,222 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              08/08/2026 15:33:52 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\tools\keil\core\C51\BIN\C51.exe main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listi
+                    -ngs\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "REG52.h"
+   2          #include "hx711.h"
+   3          #include "DHT11.h"
+   4          #include "delay.h"
+   5          #include "usart.h"
+   6          #include "esp8266.h"
+   7          
+   8          #define TIMER0_RELOAD       (65536UL - 922UL) /* 1 ms @ 11.0592 MHz / 12 */
+   9          #define SAMPLE_INTERVAL_MS  60000U
+  10          #define HX711_SCALE         1028UL
+  11          
+  12          #define WIFI_SSID           "WiFi_name"
+  13          #define WIFI_PASSWORD       "WiFi_password"
+  14          #define SERVER_IP           "8.155.44.172"
+  15          #define SERVER_PORT         "2025"
+  16          
+  17          volatile unsigned int system_ms = 0;
+  18          volatile unsigned int sample_ms = 0;
+  19          volatile bit flag_1min = 0;
+  20          
+  21          unsigned long weight;
+  22          unsigned int temp;
+  23          unsigned int humidity;
+  24          unsigned char col = 0;
+  25          unsigned char lin = 0;
+  26          int *sensor_data;
+  27          char msg[32];
+  28          
+  29          void Timer0_Init(void);
+  30          void BuildMsg(char *buf,
+  31                        unsigned int name,
+  32                        unsigned int hum,
+  33                        unsigned int temperature,
+  34                        unsigned long current_weight);
+  35          void gpio_write(unsigned char line,
+  36                          unsigned char column,
+  37                          bit value);
+  38          bit ConnectNetwork(void);
+  39          
+  40          
+  41          void timer0_ISR(void) interrupt 1
+  42          {
+  43   1          TH0 = (unsigned char)(TIMER0_RELOAD >> 8);
+  44   1          TL0 = (unsigned char)TIMER0_RELOAD;
+  45   1      
+  46   1          system_ms++;
+  47   1          if(++sample_ms >= SAMPLE_INTERVAL_MS)
+  48   1          {
+  49   2              sample_ms = 0;
+  50   2              flag_1min = 1;
+  51   2          }
+  52   1      }
+  53          
+  54          
+C51 COMPILER V9.57.0.0   MAIN                                                              08/08/2026 15:33:52 PAGE 2   
+
+  55          void Timer0_Init(void)
+  56          {
+  57   1          TMOD = (TMOD & 0xF0) | 0x01;
+  58   1          TH0 = (unsigned char)(TIMER0_RELOAD >> 8);
+  59   1          TL0 = (unsigned char)TIMER0_RELOAD;
+  60   1          ET0 = 1;
+  61   1          TR0 = 1;
+  62   1          EA = 1;
+  63   1      }
+  64          
+  65          
+  66          void main(void)
+  67          {
+  68   1          UART_Init();
+  69   1          Timer0_Init();
+  70   1          delay1ms(2000);
+  71   1      
+  72   1          while(!ESP_Init())
+  73   1              delay1ms(1000);
+  74   1      
+  75   1          while(!ConnectNetwork())
+  76   1              delay1ms(2000);
+  77   1      
+  78   1          while(1)
+  79   1          {
+  80   2              if(flag_1min)
+  81   2              {
+  82   3                  flag_1min = 0;
+  83   3      
+  84   3                  gpio_write(lin, col, 1);
+  85   3                  weight = ReadWeight() / HX711_SCALE;
+  86   3                  sensor_data = DHT11_Read();
+  87   3                  gpio_write(lin, col, 0);
+  88   3      
+  89   3                  if(sensor_data[0] >= 0 && sensor_data[1] >= 0)
+  90   3                  {
+  91   4                      humidity = (unsigned int)sensor_data[0];
+  92   4                      temp = (unsigned int)sensor_data[1];
+  93   4      
+  94   4                      BuildMsg(msg,
+  95   4                               (unsigned int)(lin * 10 + col),
+  96   4                               humidity,
+  97   4                               temp,
+  98   4                               weight);
+  99   4      
+ 100   4                      if(!ESP_TCP_Send(msg))
+ 101   4                      {
+ 102   5                          if(ConnectNetwork())
+ 103   5                              ESP_TCP_Send(msg);
+ 104   5                      }
+ 105   4                  }
+ 106   3      
+ 107   3                  if(++col == 8)
+ 108   3                  {
+ 109   4                      col = 0;
+ 110   4                      if(++lin == 3)
+ 111   4                          lin = 0;
+ 112   4                  }
+ 113   3              }
+ 114   2          }
+ 115   1      }
+ 116          
+C51 COMPILER V9.57.0.0   MAIN                                                              08/08/2026 15:33:52 PAGE 3   
+
+ 117          
+ 118          bit ConnectNetwork(void)
+ 119          {
+ 120   1          if(!ESP_ConnectWiFi(WIFI_SSID, WIFI_PASSWORD))
+ 121   1              return 0;
+ 122   1      
+ 123   1          return ESP_TCP_Connect(SERVER_IP, SERVER_PORT);
+ 124   1      }
+ 125          
+ 126          
+ 127          void gpio_write(unsigned char line,
+ 128                          unsigned char column,
+ 129                          bit value)
+ 130          {
+ 131   1          unsigned char mask = 1 << column;
+ 132   1      
+ 133   1          switch(line)
+ 134   1          {
+ 135   2              case 0:
+ 136   2                  if(value) P0 |= mask;
+ 137   2                  else      P0 &= ~mask;
+ 138   2                  break;
+ 139   2              case 1:
+ 140   2                  if(value) P1 |= mask;
+ 141   2                  else      P1 &= ~mask;
+ 142   2                  break;
+ 143   2              case 2:
+ 144   2                  if(value) P2 |= mask;
+ 145   2                  else      P2 &= ~mask;
+ 146   2                  break;
+ 147   2          }
+ 148   1      }
+ 149          
+ 150          
+ 151          static char *AppendUnsignedLong(char *buf, unsigned long value)
+ 152          {
+ 153   1          char digits[10];
+ 154   1          unsigned char count = 0;
+ 155   1      
+ 156   1          do
+ 157   1          {
+ 158   2              digits[count++] = (char)(value % 10UL) + '0';
+ 159   2              value /= 10UL;
+ 160   2          }
+ 161   1          while(value != 0UL);
+ 162   1      
+ 163   1          while(count > 0)
+ 164   1              *buf++ = digits[--count];
+ 165   1      
+ 166   1          return buf;
+ 167   1      }
+ 168          
+ 169          
+ 170          void BuildMsg(char *buf,
+ 171                        unsigned int name,
+ 172                        unsigned int hum,
+ 173                        unsigned int temperature,
+ 174                        unsigned long current_weight)
+ 175          {
+ 176   1          char *cursor = buf;
+ 177   1      
+ 178   1          *cursor++ = 'M';
+C51 COMPILER V9.57.0.0   MAIN                                                              08/08/2026 15:33:52 PAGE 4   
+
+ 179   1          *cursor++ = 'e';
+ 180   1          *cursor++ = 'd';
+ 181   1          *cursor++ = (char)(name / 10U) + '0';
+ 182   1          *cursor++ = (char)(name % 10U) + '0';
+ 183   1          *cursor++ = '/';
+ 184   1          cursor = AppendUnsignedLong(cursor, (unsigned long)hum);
+ 185   1          *cursor++ = '/';
+ 186   1          cursor = AppendUnsignedLong(cursor, (unsigned long)temperature);
+ 187   1          *cursor++ = '/';
+ 188   1          cursor = AppendUnsignedLong(cursor, current_weight);
+ 189   1          *cursor++ = '\r';
+ 190   1          *cursor++ = '\n';
+ 191   1          *cursor = '\0';
+ 192   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    837    ----
+   CONSTANT SIZE    =     42    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     49      34
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1       1
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

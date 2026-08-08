@@ -1,0 +1,210 @@
+C51 COMPILER V9.57.0.0   ESP8266                                                           08/08/2026 15:33:52 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE ESP8266
+OBJECT MODULE PLACED IN .\Objects\esp8266.obj
+COMPILER INVOKED BY: E:\tools\keil\core\C51\BIN\C51.exe esp8266.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Li
+                    -stings\esp8266.lst) TABS(2) OBJECT(.\Objects\esp8266.obj)
+
+line level    source
+
+   1          #include <REG52.H>
+   2          #include "delay.h"
+   3          #include "usart.h"
+   4          #include "esp8266.h"
+   5          
+   6          #define ESP_RETRY_COUNT          3
+   7          #define ESP_AT_TIMEOUT_MS        2000U
+   8          #define ESP_WIFI_TIMEOUT_MS      20000U
+   9          #define ESP_TCP_TIMEOUT_MS       10000U
+  10          #define ESP_SEND_TIMEOUT_MS      5000U
+  11          
+  12          extern volatile unsigned int system_ms;
+  13          
+  14          
+  15          static unsigned int ESP_GetMillis(void)
+  16          {
+  17   1          unsigned int value;
+  18   1          unsigned char interrupt_state = EA;
+  19   1      
+  20   1          EA = 0;
+  21   1          value = system_ms;
+  22   1          EA = interrupt_state;
+  23   1          return value;
+  24   1      }
+  25          
+  26          
+  27          static bit ESP_WaitTwo(char *first, char *second, unsigned int timeout_ms)
+  28          {
+  29   1          unsigned char first_index = 0;
+  30   1          unsigned char second_index = 0;
+  31   1          unsigned char received;
+  32   1          unsigned int start = ESP_GetMillis();
+  33   1      
+  34   1          while((unsigned int)(ESP_GetMillis() - start) < timeout_ms)
+  35   1          {
+  36   2              if(RI)
+  37   2              {
+  38   3                  RI = 0;
+  39   3                  received = SBUF;
+  40   3      
+  41   3                  if(received == first[first_index])
+  42   3                  {
+  43   4                      first_index++;
+  44   4                      if(first[first_index] == '\0')
+  45   4                          return 1;
+  46   4                  }
+  47   3                  else
+  48   3                  {
+  49   4                      first_index = (received == first[0]) ? 1 : 0;
+  50   4                  }
+  51   3      
+  52   3                  if(second != 0)
+  53   3                  {
+  54   4                      if(received == second[second_index])
+C51 COMPILER V9.57.0.0   ESP8266                                                           08/08/2026 15:33:52 PAGE 2   
+
+  55   4                      {
+  56   5                          second_index++;
+  57   5                          if(second[second_index] == '\0')
+  58   5                              return 1;
+  59   5                      }
+  60   4                      else
+  61   4                      {
+  62   5                          second_index = (received == second[0]) ? 1 : 0;
+  63   5                      }
+  64   4                  }
+  65   3              }
+  66   2          }
+  67   1      
+  68   1          return 0;
+  69   1      }
+  70          
+  71          
+  72          bit ESP_Wait(char *str, unsigned int timeout_ms)
+  73          {
+  74   1          return ESP_WaitTwo(str, 0, timeout_ms);
+  75   1      }
+  76          
+  77          
+  78          void ESP_SendCmd(char *cmd)
+  79          {
+  80   1          RI = 0;
+  81   1          UART_SendString(cmd);
+  82   1          UART_SendString("\r\n");
+  83   1      }
+  84          
+  85          
+  86          bit ESP_Init(void)
+  87          {
+  88   1          unsigned char attempt;
+  89   1      
+  90   1          for(attempt = 0; attempt < ESP_RETRY_COUNT; attempt++)
+  91   1          {
+  92   2              ESP_SendCmd("AT");
+  93   2              if(ESP_Wait("OK", ESP_AT_TIMEOUT_MS))
+  94   2                  return 1;
+  95   2              delay1ms(300);
+  96   2          }
+  97   1      
+  98   1          return 0;
+  99   1      }
+ 100          
+ 101          
+ 102          bit ESP_ConnectWiFi(char *ssid, char *pwd)
+ 103          {
+ 104   1          unsigned char attempt;
+ 105   1      
+ 106   1          for(attempt = 0; attempt < ESP_RETRY_COUNT; attempt++)
+ 107   1          {
+ 108   2              RI = 0;
+ 109   2              UART_SendString("AT+CWJAP=\"");
+ 110   2              UART_SendString(ssid);
+ 111   2              UART_SendString("\",\"");
+ 112   2              UART_SendString(pwd);
+ 113   2              UART_SendString("\"\r\n");
+ 114   2      
+ 115   2              if(ESP_WaitTwo("OK", "WIFI GOT IP", ESP_WIFI_TIMEOUT_MS))
+ 116   2                  return 1;
+C51 COMPILER V9.57.0.0   ESP8266                                                           08/08/2026 15:33:52 PAGE 3   
+
+ 117   2              delay1ms(500);
+ 118   2          }
+ 119   1      
+ 120   1          return 0;
+ 121   1      }
+ 122          
+ 123          
+ 124          bit ESP_TCP_Connect(char *ip, char *port)
+ 125          {
+ 126   1          unsigned char attempt;
+ 127   1      
+ 128   1          for(attempt = 0; attempt < ESP_RETRY_COUNT; attempt++)
+ 129   1          {
+ 130   2              RI = 0;
+ 131   2              UART_SendString("AT+CIPSTART=\"TCP\",\"");
+ 132   2              UART_SendString(ip);
+ 133   2              UART_SendString("\",");
+ 134   2              UART_SendString(port);
+ 135   2              UART_SendString("\r\n");
+ 136   2      
+ 137   2              if(ESP_WaitTwo("OK", "ALREADY CONNECTED", ESP_TCP_TIMEOUT_MS))
+ 138   2                  return 1;
+ 139   2              delay1ms(500);
+ 140   2          }
+ 141   1      
+ 142   1          return 0;
+ 143   1      }
+ 144          
+ 145          
+ 146          static void ESP_SendLength(unsigned int value)
+ 147          {
+ 148   1          char digits[5];
+ 149   1          unsigned char count = 0;
+ 150   1      
+ 151   1          do
+ 152   1          {
+ 153   2              digits[count++] = (char)(value % 10U) + '0';
+ 154   2              value /= 10U;
+ 155   2          }
+ 156   1          while(value != 0U);
+ 157   1      
+ 158   1          while(count > 0)
+ 159   1              UART_SendByte(digits[--count]);
+ 160   1      }
+ 161          
+ 162          
+ 163          bit ESP_TCP_Send(char *payload)
+ 164          {
+ 165   1          unsigned int length = 0;
+ 166   1      
+ 167   1          while(payload[length] != '\0')
+ 168   1              length++;
+ 169   1      
+ 170   1          RI = 0;
+ 171   1          UART_SendString("AT+CIPSEND=");
+ 172   1          ESP_SendLength(length);
+ 173   1          UART_SendString("\r\n");
+ 174   1      
+ 175   1          if(!ESP_Wait(">", ESP_SEND_TIMEOUT_MS))
+ 176   1              return 0;
+ 177   1      
+ 178   1          UART_SendString(payload);
+C51 COMPILER V9.57.0.0   ESP8266                                                           08/08/2026 15:33:52 PAGE 4   
+
+ 179   1          return ESP_Wait("SEND OK", ESP_SEND_TIMEOUT_MS);
+ 180   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    623    ----
+   CONSTANT SIZE    =    103    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      37
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
